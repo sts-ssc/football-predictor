@@ -16,7 +16,7 @@
 .analyseAllBtn:hover:not(:disabled) { background: #047857; }
 .analyseAllBtn:disabled { background: #9ca3af; cursor: not-allowed; }
 
-.list        { display: flex; flex-direction: column; gap: 12px; }
+.list        { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
 
 .card        { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
                padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
