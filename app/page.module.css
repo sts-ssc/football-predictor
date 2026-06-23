@@ -9,7 +9,7 @@
 .active      { background: #111827 !important; color: #fff !important; border-color: #111827 !important; }
 
 .leagueHeader  { display: flex; align-items: center; justify-content: space-between;
-                 margin: 1.25rem 0 8px; }
+                 margin: 1.25rem 0 8px; flex-wrap: wrap; gap: 8px; }
 .leagueTitle   { font-size: 15px; font-weight: 600; color: #111827; }
 .analyseAllBtn { padding: 6px 16px; border-radius: 8px; background: #059669; color: #fff;
                  border: none; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
