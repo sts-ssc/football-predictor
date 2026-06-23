@@ -17,12 +17,13 @@ Use your web search tool to find the MOST RECENT available information, as close
 
 Prioritize the latest news (within days of the match) over older season-long stats when they conflict.
 
-Respond ONLY with raw JSON, no markdown, no backticks:
+After your research, respond ONLY with raw JSON, no markdown, no backticks:
 {
   "home_score": <number>,
   "away_score": <number>,
   "confidence": "<Low|Medium|High>",
-  "reasoning": "<2-3 sentences in German covering form, key factors, and why this score>"
+  "reasoning": "<2-3 sentences in German covering form, key factors, and why this score>",
+  "sources": ["<domain or site name of each distinct source actually used, e.g. 'bbc.com/sport', 'transfermarkt.de'>"]
 }`;
 
   try {
