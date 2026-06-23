@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Welche Suchbegriffe pro Liga/Wettbewerb verwendet werden, um die richtige Runde zu finden
 const COMPETITION_HINTS = {
   "FIFA World Cup 2026": "FIFA World Cup 2026 next round fixtures (Round of 16, Quarter-finals, Semi-finals, or Final depending on tournament stage)",
   "Premier League": "Premier League next matchday fixtures",
@@ -9,6 +10,7 @@ const COMPETITION_HINTS = {
   "Serie A": "Serie A next matchday fixtures",
   "Bundesliga": "Bundesliga next matchday fixtures",
   "Ligue 1": "Ligue 1 next matchday fixtures",
+  "UEFA Champions League": "UEFA Champions League next matchday fixtures (league phase or knockout round depending on current stage)",
 };
 
 export async function POST(request) {
