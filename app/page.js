@@ -4,11 +4,12 @@ import styles from "./page.module.css";
 
 const GROUPS = {
   "WM 2026":         { flag: "🏆", color: "#0a1e6e", competition: "FIFA World Cup 2026" },
-  "Premier League":  { flag: "🏴", color: "#3d195b", competition: "Premier League" },
+  "Premier League":  { flag: "EN", color: "#3d195b", competition: "Premier League" },
   "La Liga":         { flag: "🇪🇸", color: "#ee8707", competition: "La Liga" },
   "Serie A":         { flag: "🇮🇹", color: "#1a56db", competition: "Serie A" },
   "Bundesliga":      { flag: "🇩🇪", color: "#d00",    competition: "Bundesliga" },
   "Ligue 1":         { flag: "🇫🇷", color: "#003189", competition: "Ligue 1" },
+  "Champions League":{ flag: "⭐", color: "#0a1e6e", competition: "UEFA Champions League" },
 };
 
 const CONF_STYLE = {
@@ -162,6 +163,7 @@ export default function Home() {
           predicted_away_score: data.prediction.away_score,
           confidence: data.prediction.confidence,
           reasoning: data.prediction.reasoning,
+          sources: data.prediction.sources || [],
           actual_home_score: null,
           actual_away_score: null,
           resolved: false,
@@ -272,6 +274,11 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+                  {r.sources && r.sources.length > 0 && (
+                    <div className={styles.sources} style={{ marginTop: 8 }}>
+                      Quellen: {r.sources.join(" · ")}
+                    </div>
+                  )}
                 </div>
               ))}
             </>
@@ -361,7 +368,14 @@ export default function Home() {
                   </div>
 
                   {pred?.reasoning && (
-                    <div className={styles.reasoning}>{pred.reasoning}</div>
+                    <div className={styles.reasoning}>
+                      {pred.reasoning}
+                      {pred.sources && pred.sources.length > 0 && (
+                        <div className={styles.sources}>
+                          Quellen: {pred.sources.join(" · ")}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );
