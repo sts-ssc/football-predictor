@@ -26,10 +26,76 @@ export default function Home() {
   const [predictions, setPredictions] = useState({});
   const [loading, setLoading]         = useState({});
   const [filter, setFilter]           = useState("WM 2026");
-  const [view, setView]               = useState("upcoming"); // "upcoming" | "results" | "stats"
+  const [view, setView]               = useState("upcoming");
   const [history, setHistory]         = useState([]);
+  const [teamData, setTeamData]       = useState({});
+  const [teamDataLoading, setTdLoading] = useState({});
+  const [snapshotInfo, setSnapshotInfo] = useState(null);
   const [resolving, setResolving]     = useState(false);
   const fileInputRef = useRef(null);
+  const rawDataInputRef = useRef(null);
+
+  function downloadRawData() {
+    const now = new Date().toISOString();
+    const payload = { type: "football-predictor-raw-data", snapshot_created_at: now, teamData };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = now.slice(0, 19).replace(/[:T]/g, "-");
+    a.download = `football-predictor-rohdaten-${ts}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function uploadRawData(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        const td = parsed.teamData && typeof parsed.teamData === "object" ? parsed.teamData : null;
+        if (!td) throw new Error("Datei enthält keine gültigen Rohdaten (teamData fehlt).");
+        setTeamData(td);
+        setSnapshotInfo({
+          filename: file.name,
+          loaded_at: new Date().toISOString(),
+          snapshot_created_at: parsed.snapshot_created_at || null,
+        });
+      } catch (err) {
+        alert("Ungültige Rohdaten-Datei: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  async function fetchTeamData(team, competition) {
+    setTdLoading(l => ({ ...l, [team]: true }));
+    try {
+      const res = await fetch("/api/teamdata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team, competition }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      setTeamData(td => ({ ...td, [team]: data.data }));
+      setSnapshotInfo(null);
+    } catch (e) {
+      setTeamData(td => ({ ...td, [team]: { team, table_position: "Fehler", recent_form: "-", injuries: e.message, notes: "", fetched_at: null } }));
+    }
+    setTdLoading(l => ({ ...l, [team]: false }));
+  }
+
+  async function fetchAllTeamData(matches, competition) {
+    const teams = [...new Set(matches.flatMap(m => [m.home, m.away]))];
+    for (const team of teams) {
+      if (teamDataLoading[team]) continue;
+      await fetchTeamData(team, competition);
+    }
+  }
 
   function downloadHistory() {
     const blob = new Blob([JSON.stringify(history, null, 2)], { type: "application/json" });
@@ -142,10 +208,12 @@ export default function Home() {
     setLoading(l => ({ ...l, [match.id]: true }));
     try {
       const competition = GROUPS[groupKey].competition;
+      const homeData = teamData[match.home] || null;
+      const awayData = teamData[match.away] || null;
       const res = await fetch("/api/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ home: match.home, away: match.away, league: competition, date: match.date }),
+        body: JSON.stringify({ home: match.home, away: match.away, league: competition, date: match.date, homeData, awayData }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
@@ -163,7 +231,7 @@ export default function Home() {
           predicted_away_score: data.prediction.away_score,
           confidence: data.prediction.confidence,
           reasoning: data.prediction.reasoning,
-          sources: data.prediction.sources || [],
+          sources: [...(homeData?.sources || []), ...(awayData?.sources || [])],
           actual_home_score: null,
           actual_away_score: null,
           resolved: false,
@@ -247,6 +315,10 @@ export default function Home() {
                     <div style={{ fontSize: 28, fontWeight: 700, color: "#9ca3af" }}>{history.length - stats.total}</div>
                     <div style={{ fontSize: 12, color: "#6b7280" }}>Noch offen</div>
                   </div>
+                  <div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed" }}>{Object.keys(teamData).length}</div>
+                    <div style={{ fontSize: 12, color: "#6b7280" }}>Teams im Daten-Cache</div>
+                  </div>
                 </div>
               </div>
 
@@ -321,108 +393,6 @@ export default function Home() {
       {view === "upcoming" && current && current.matches.length > 0 && (
         <>
           <div className={styles.list}>
-            <button
-              className={styles.analyseAllBtn}
-              style={{ marginBottom: 8, alignSelf: "flex-start" }}
-              disabled={current.matches.some(m => loading[m.id])}
-              onClick={() => current.matches.forEach(m => predict(m, filter))}
-            >
-              ⚡ Alle Spiele dieser Runde analysieren
-            </button>
-
-            {current.matches.map(match => {
-              const pred = predictions[match.id];
-              const busy = loading[match.id];
-              const cs   = pred ? (CONF_STYLE[pred.confidence] || CONF_STYLE.Low) : null;
-
-              return (
-                <div key={match.id} className={styles.card}>
-                  <div className={styles.cardTop}>
-                    <div className={styles.matchInfo}>
-                      <div className={styles.teams}>
-                        <span>{match.home}</span>
-                        <span className={styles.vs}>vs</span>
-                        <span>{match.away}</span>
-                      </div>
-                      <div className={styles.date}>
-                        {match.date ? new Date(match.date).toLocaleString("de-CH", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
-                      </div>
-                    </div>
-
-                    <div className={styles.right}>
-                      {pred && (
-                        <div className={styles.scoreBox}>
-                          <span className={styles.scoreNum}>{pred.home_score}</span>
-                          <span className={styles.scoreSep}>:</span>
-                          <span className={styles.scoreNum}>{pred.away_score}</span>
-                          <span className={styles.confBadge}
-                            style={{ background: cs.bg, color: cs.color, borderColor: cs.border }}>
-                            {pred.confidence}
-                          </span>
-                        </div>
-                      )}
-                      <button className={styles.predictBtn} onClick={() => predict(match, filter)} disabled={busy}>
-                        {busy ? "Analysiere…" : pred ? "Neu analysieren" : "Prognose"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {pred?.reasoning && (
-                    <div className={styles.reasoning}>
-                      {pred.reasoning}
-                      {pred.sources && pred.sources.length > 0 && (
-                        <div className={styles.sources}>
-                          Quellen: {pred.sources.join(" · ")}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {view === "results" && isResLoading && !currentResults && (
-        <div className={styles.card}>Lade letzte Ergebnisse für {filter}…</div>
-      )}
-
-      {view === "results" && currentResults?.error && (
-        <div className={styles.card}>Fehler beim Laden: {currentResults.error}</div>
-      )}
-
-      {view === "results" && currentResults && currentResults.results.length === 0 && !currentResults.error && (
-        <div className={styles.card}>Keine abgeschlossenen Spiele gefunden.</div>
-      )}
-
-      {view === "results" && currentResults && currentResults.results.length > 0 && (
-        <div className={styles.list}>
-          {currentResults.results.map((r, i) => (
-            <div key={i} className={styles.card}>
-              <div className={styles.cardTop}>
-                <div className={styles.matchInfo}>
-                  <div className={styles.teams}>
-                    <span>{r.home}</span>
-                    <span className={styles.vs}>vs</span>
-                    <span>{r.away}</span>
-                  </div>
-                  <div className={styles.date}>
-                    {r.date ? new Date(r.date).toLocaleString("de-CH", { weekday: "short", day: "2-digit", month: "short" }) : ""}
-                  </div>
-                </div>
-                <div className={styles.scoreBox}>
-                  <span className={styles.scoreNum}>{r.home_score}</span>
-                  <span className={styles.scoreSep}>:</span>
-                  <span className={styles.scoreNum}>{r.away_score}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      </>
-      )}
-    </main>
-  );
-}
+            <div className={styles.rawDataBar}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
