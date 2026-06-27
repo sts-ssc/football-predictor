@@ -396,3 +396,143 @@ export default function Home() {
             <div className={styles.rawDataBar}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
+                  className={styles.analyseAllBtn}
+                  style={{ background: "#7c3aed" }}
+                  disabled={Object.values(teamDataLoading).some(Boolean)}
+                  onClick={() => fetchAllTeamData(current.matches, lg2.competition)}
+                >
+                  📥 Daten für alle Teams holen
+                </button>
+                <button className={styles.analyseAllBtn} style={{ background: "#374151" }} onClick={downloadRawData} disabled={Object.keys(teamData).length === 0}>
+                  ⬇️ Rohdaten speichern
+                </button>
+                <button className={styles.analyseAllBtn} style={{ background: "#374151" }} onClick={() => rawDataInputRef.current?.click()}>
+                  ⬆️ Rohdaten laden
+                </button>
+                <input ref={rawDataInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={uploadRawData} />
+              </div>
+              {snapshotInfo && (
+                <div className={styles.snapshotBadge}>
+                  📄 {snapshotInfo.filename}
+                  {snapshotInfo.snapshot_created_at && ` · erstellt ${new Date(snapshotInfo.snapshot_created_at).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`}
+                </div>
+              )}
+            </div>
+
+            <button
+              className={styles.analyseAllBtn}
+              style={{ alignSelf: "flex-start" }}
+              disabled={current.matches.some(m => loading[m.id])}
+              onClick={() => current.matches.forEach(m => predict(m, filter))}
+            >
+              ⚡ Alle Spiele dieser Runde analysieren
+            </button>
+
+            {current.matches.map(match => {
+              const pred = predictions[match.id];
+              const busy = loading[match.id];
+              const cs   = pred ? (CONF_STYLE[pred.confidence] || CONF_STYLE.Low) : null;
+              const homeTd = teamData[match.home];
+              const awayTd = teamData[match.away];
+              const homeTdLoading = teamDataLoading[match.home];
+              const awayTdLoading = teamDataLoading[match.away];
+
+              return (
+                <div key={match.id} className={styles.card}>
+                  <div className={styles.cardTop}>
+                    <div className={styles.matchInfo}>
+                      <div className={styles.teams}>
+                        <span>{match.home}</span>
+                        <span className={styles.vs}>vs</span>
+                        <span>{match.away}</span>
+                      </div>
+                      <div className={styles.date}>
+                        {match.date ? new Date(match.date).toLocaleString("de-CH", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
+                      </div>
+
+                      <div className={styles.teamDataRow}>
+                        <span className={`${styles.teamDataChip} ${homeTd ? styles.teamDataChipOk : ""}`}
+                          onClick={() => fetchTeamData(match.home, lg2.competition)}
+                          title={homeTd ? `Tabelle: ${homeTd.table_position} · Form: ${homeTd.recent_form} · Ausfälle: ${homeTd.injuries} · Stand: ${homeTd.fetched_at || "-"}` : "Klicken, um Daten zu holen"}>
+                          {homeTdLoading ? "⏳" : homeTd ? "✅" : "📥"} {match.home}{homeTd?.fetched_at ? ` (${homeTd.fetched_at})` : ""}
+                        </span>
+                        <span className={`${styles.teamDataChip} ${awayTd ? styles.teamDataChipOk : ""}`}
+                          onClick={() => fetchTeamData(match.away, lg2.competition)}
+                          title={awayTd ? `Tabelle: ${awayTd.table_position} · Form: ${awayTd.recent_form} · Ausfälle: ${awayTd.injuries} · Stand: ${awayTd.fetched_at || "-"}` : "Klicken, um Daten zu holen"}>
+                          {awayTdLoading ? "⏳" : awayTd ? "✅" : "📥"} {match.away}{awayTd?.fetched_at ? ` (${awayTd.fetched_at})` : ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.right}>
+                      {pred && (
+                        <div className={styles.scoreBox}>
+                          <span className={styles.scoreNum}>{pred.home_score}</span>
+                          <span className={styles.scoreSep}>:</span>
+                          <span className={styles.scoreNum}>{pred.away_score}</span>
+                          <span className={styles.confBadge}
+                            style={{ background: cs.bg, color: cs.color, borderColor: cs.border }}>
+                            {pred.confidence}
+                          </span>
+                        </div>
+                      )}
+                      <button className={styles.predictBtn} onClick={() => predict(match, filter)} disabled={busy}>
+                        {busy ? "Analysiere…" : pred ? "Neu analysieren" : "Prognose"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {pred?.reasoning && (
+                    <div className={styles.reasoning}>
+                      {pred.reasoning}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {view === "results" && isResLoading && !currentResults && (
+        <div className={styles.card}>Lade letzte Ergebnisse für {filter}…</div>
+      )}
+
+      {view === "results" && currentResults?.error && (
+        <div className={styles.card}>Fehler beim Laden: {currentResults.error}</div>
+      )}
+
+      {view === "results" && currentResults && currentResults.results.length === 0 && !currentResults.error && (
+        <div className={styles.card}>Keine abgeschlossenen Spiele gefunden.</div>
+      )}
+
+      {view === "results" && currentResults && currentResults.results.length > 0 && (
+        <div className={styles.list}>
+          {currentResults.results.map((r, i) => (
+            <div key={i} className={styles.card}>
+              <div className={styles.cardTop}>
+                <div className={styles.matchInfo}>
+                  <div className={styles.teams}>
+                    <span>{r.home}</span>
+                    <span className={styles.vs}>vs</span>
+                    <span>{r.away}</span>
+                  </div>
+                  <div className={styles.date}>
+                    {r.date ? new Date(r.date).toLocaleString("de-CH", { weekday: "short", day: "2-digit", month: "short" }) : ""}
+                  </div>
+                </div>
+                <div className={styles.scoreBox}>
+                  <span className={styles.scoreNum}>{r.home_score}</span>
+                  <span className={styles.scoreSep}>:</span>
+                  <span className={styles.scoreNum}>{r.away_score}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      </>
+      )}
+    </main>
+  );
+}
