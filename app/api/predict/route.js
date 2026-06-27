@@ -3,34 +3,37 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request) {
-  const { home, away, league, date } = await request.json();
+  const { home, away, league, date, homeData, awayData } = await request.json();
+
+  const homeContext = homeData
+    ? `${home}: Tabelle: ${homeData.table_position}, Form: ${homeData.recent_form}, Ausfälle: ${homeData.injuries}, Hinweis: ${homeData.notes || "–"} (Daten von ${homeData.fetched_at})`
+    : `${home}: Keine Daten verfügbar — bitte zuerst per "Daten holen" laden.`;
+
+  const awayContext = awayData
+    ? `${away}: Tabelle: ${awayData.table_position}, Form: ${awayData.recent_form}, Ausfälle: ${awayData.injuries}, Hinweis: ${awayData.notes || "–"} (Daten von ${awayData.fetched_at})`
+    : `${away}: Keine Daten verfügbar — bitte zuerst per "Daten holen" laden.`;
 
   const prompt = `You are a football analyst. Predict the score for: ${home} vs ${away} (${league}, ${date}).
 
-Use your web search tool to find the MOST RECENT available information, as close as possible to the match date, including:
-1. Current league table positions / tournament standing of both teams
-2. Recent form (last 5 matches) of both teams
-3. Head-to-head record
-4. Key injuries, suspensions, or confirmed squad news as close to matchday as possible
-5. Home/away performance stats
-6. Any confirmed or rumored starting lineup news if available
+Use ONLY the following pre-gathered data — do NOT search the web, base your analysis entirely on this:
 
-Prioritize the latest news (within days of the match) over older season-long stats when they conflict.
+${homeContext}
+${awayContext}
 
-After your research, respond ONLY with raw JSON, no markdown, no backticks:
+If data is missing for a team, state that explicitly in your reasoning and rely on general football knowledge instead, noting the prediction is less reliable.
+
+Respond ONLY with raw JSON, no markdown, no backticks:
 {
   "home_score": <number>,
   "away_score": <number>,
   "confidence": "<Low|Medium|High>",
-  "reasoning": "<2-3 sentences in German covering form, key factors, and why this score>",
-  "sources": ["<domain or site name of each distinct source actually used, e.g. 'bbc.com/sport', 'transfermarkt.de'>"]
+  "reasoning": "<2-3 sentences in German covering form, key factors, and why this score>"
 }`;
 
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      max_tokens: 700,
       messages: [{ role: "user", content: prompt }],
     });
 
