@@ -2,7 +2,6 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Welche Suchbegriffe pro Liga/Wettbewerb verwendet werden, um die richtige Runde zu finden
 const COMPETITION_HINTS = {
   "FIFA World Cup 2026": "FIFA World Cup 2026 next round fixtures (Round of 16, Quarter-finals, Semi-finals, or Final depending on tournament stage)",
   "Premier League": "Premier League next matchday fixtures",
@@ -42,7 +41,7 @@ Respond ONLY with raw JSON, no markdown, no backticks, no explanation:
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1500,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
       messages: [{ role: "user", content: prompt }],
     });
 
