@@ -26,18 +26,23 @@ export default function Home() {
   const [predictions, setPredictions] = useState({});
   const [loading, setLoading]         = useState({});
   const [filter, setFilter]           = useState("WM 2026");
-  const [view, setView]               = useState("upcoming");
+  const [view, setView]               = useState("upcoming"); // "upcoming" | "results" | "stats"
   const [history, setHistory]         = useState([]);
-  const [teamData, setTeamData]       = useState({});
+  const [teamData, setTeamData]       = useState({}); // { "Arsenal": { table_position, recent_form, injuries, notes, sources, fetched_at } }
   const [teamDataLoading, setTdLoading] = useState({});
-  const [snapshotInfo, setSnapshotInfo] = useState(null);
+  const [snapshotInfo, setSnapshotInfo] = useState(null); // { filename, loaded_at, snapshot_created_at }
+  const [bulkProgress, setBulkProgress] = useState(null); // { done, total } | null
   const [resolving, setResolving]     = useState(false);
   const fileInputRef = useRef(null);
   const rawDataInputRef = useRef(null);
 
   function downloadRawData() {
     const now = new Date().toISOString();
-    const payload = { type: "football-predictor-raw-data", snapshot_created_at: now, teamData };
+    const payload = {
+      type: "football-predictor-raw-data",
+      snapshot_created_at: now,
+      teamData,
+    };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -82,7 +87,7 @@ export default function Home() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setTeamData(td => ({ ...td, [team]: data.data }));
-      setSnapshotInfo(null);
+      setSnapshotInfo(null); // Cache wurde live verändert, ist kein reiner Datei-Snapshot mehr
     } catch (e) {
       setTeamData(td => ({ ...td, [team]: { team, table_position: "Fehler", recent_form: "-", injuries: e.message, notes: "", fetched_at: null } }));
     }
@@ -91,10 +96,15 @@ export default function Home() {
 
   async function fetchAllTeamData(matches, competition) {
     const teams = [...new Set(matches.flatMap(m => [m.home, m.away]))];
-    for (const team of teams) {
-      if (teamDataLoading[team]) continue;
-      await fetchTeamData(team, competition);
+    setBulkProgress({ done: 0, total: teams.length });
+    for (let i = 0; i < teams.length; i++) {
+      const team = teams[i];
+      if (!teamDataLoading[team]) {
+        await fetchTeamData(team, competition);
+      }
+      setBulkProgress({ done: i + 1, total: teams.length });
     }
+    setTimeout(() => setBulkProgress(null), 800); // kurz "fertig" anzeigen, dann ausblenden
   }
 
   function downloadHistory() {
@@ -398,10 +408,10 @@ export default function Home() {
                 <button
                   className={styles.analyseAllBtn}
                   style={{ background: "#7c3aed" }}
-                  disabled={Object.values(teamDataLoading).some(Boolean)}
+                  disabled={!!bulkProgress}
                   onClick={() => fetchAllTeamData(current.matches, lg2.competition)}
                 >
-                  📥 Daten für alle Teams holen
+                  {bulkProgress ? `⏳ Lade Daten… (${bulkProgress.done}/${bulkProgress.total})` : "📥 Daten für alle Teams holen"}
                 </button>
                 <button className={styles.analyseAllBtn} style={{ background: "#374151" }} onClick={downloadRawData} disabled={Object.keys(teamData).length === 0}>
                   ⬇️ Rohdaten speichern
@@ -418,6 +428,12 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {bulkProgress && (
+              <div className={styles.progressBarOuter}>
+                <div className={styles.progressBarInner} style={{ width: `${Math.round(100 * bulkProgress.done / bulkProgress.total)}%` }} />
+              </div>
+            )}
 
             <button
               className={styles.analyseAllBtn}
