@@ -107,6 +107,72 @@ export default function Home() {
     setTimeout(() => setBulkProgress(null), 800); // kurz "fertig" anzeigen, dann ausblenden
   }
 
+  function exportPdf() {
+    const rows = [...history].reverse().map(r => `
+      <tr>
+        <td>${new Date(r.created_at).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+        <td>${r.competition}</td>
+        <td>${r.home_team} vs ${r.away_team}</td>
+        <td>${r.match_date ? new Date(r.match_date).toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-"}</td>
+        <td style="text-align:center;font-weight:600;">${r.predicted_home_score}:${r.predicted_away_score}</td>
+        <td style="text-align:center;">${r.resolved ? `${r.actual_home_score}:${r.actual_away_score}` : "–"}</td>
+        <td>${r.confidence}</td>
+        <td style="font-size:11px;color:#555;">${(r.reasoning || "").replace(/</g, "&lt;")}</td>
+      </tr>
+    `).join("");
+
+    const generatedAt = new Date().toLocaleString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="de">
+      <head>
+        <meta charset="utf-8" />
+        <title>Football Score Predictor – Prognosen</title>
+        <style>
+          body { font-family: system-ui, sans-serif; padding: 24px; color: #111827; }
+          h1 { font-size: 20px; margin-bottom: 2px; }
+          .meta { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+          th { background: #f3f4f6; font-weight: 600; }
+          tr:nth-child(even) { background: #fafafa; }
+          @media print {
+            @page { size: A4 landscape; margin: 14mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>⚽ Football Score Predictor – Prognosen-Übersicht</h1>
+        <div class="meta">Erstellt am ${generatedAt} · ${history.length} Prognosen total</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Prognose erstellt am</th>
+              <th>Wettbewerb</th>
+              <th>Spiel</th>
+              <th>Spieldatum</th>
+              <th>Prognose</th>
+              <th>Resultat</th>
+              <th>Confidence</th>
+              <th>Begründung</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  }
+
   function downloadHistory() {
     const blob = new Blob([JSON.stringify(history, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -291,6 +357,9 @@ export default function Home() {
               </button>
               <button className={styles.analyseAllBtn} onClick={downloadHistory}>
                 ⬇️ Historie herunterladen
+              </button>
+              <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportPdf} disabled={history.length === 0}>
+                🖨️ Als PDF exportieren
               </button>
               <button className={styles.analyseAllBtn} onClick={() => fileInputRef.current?.click()}>
                 ⬆️ Historie hochladen
