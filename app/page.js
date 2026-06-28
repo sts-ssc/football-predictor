@@ -33,8 +33,10 @@ export default function Home() {
   const [snapshotInfo, setSnapshotInfo] = useState(null); // { filename, loaded_at, snapshot_created_at }
   const [bulkProgress, setBulkProgress] = useState(null); // { done, total } | null
   const [resolving, setResolving]     = useState(false);
+  const [loadedResultSets, setLoadedResultSets] = useState([]); // [{ filename, competition, results, loaded_at }]
   const fileInputRef = useRef(null);
   const rawDataInputRef = useRef(null);
+  const resultsInputRef = useRef(null);
 
   function downloadRawData() {
     const now = new Date().toISOString();
@@ -173,6 +175,47 @@ export default function Home() {
     setTimeout(() => win.print(), 300);
   }
 
+  function exportStatsPdf() {
+    const generatedAt = new Date().toLocaleString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const open = history.length - stats.total;
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="de">
+      <head>
+        <meta charset="utf-8" />
+        <title>Football Score Predictor – KI-Trefferquote</title>
+        <style>
+          body { font-family: system-ui, sans-serif; padding: 32px; color: #111827; }
+          h1 { font-size: 20px; margin-bottom: 2px; }
+          .meta { font-size: 12px; color: #6b7280; margin-bottom: 28px; }
+          .grid { display: flex; gap: 24px; margin-bottom: 24px; }
+          .stat { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; flex: 1; }
+          .stat .num { font-size: 32px; font-weight: 700; }
+          .stat .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+          @media print { @page { size: A4 portrait; margin: 16mm; } }
+        </style>
+      </head>
+      <body>
+        <h1>📊 Football Score Predictor – KI-Trefferquote</h1>
+        <div class="meta">Erstellt am ${generatedAt} · basierend auf ${history.length} erfassten Prognosen</div>
+        <div class="grid">
+          <div class="stat"><div class="num">${stats.total}</div><div class="label">Ausgewertete Prognosen</div></div>
+          <div class="stat"><div class="num" style="color:#059669">${stats.tendencyPct}%</div><div class="label">Tendenz korrekt</div></div>
+          <div class="stat"><div class="num" style="color:#1d4ed8">${stats.exactScorePct}%</div><div class="label">Exaktes Ergebnis korrekt</div></div>
+          <div class="stat"><div class="num" style="color:#9ca3af">${open}</div><div class="label">Noch offen</div></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  }
+
   function downloadHistory() {
     const blob = new Blob([JSON.stringify(history, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -199,32 +242,55 @@ export default function Home() {
     e.target.value = "";
   }
 
-  async function runResolve() {
-    const pending = history
-      .filter(h => !h.resolved && h.match_date && new Date(h.match_date) < new Date())
-      .map(h => ({ id: h.id, competition: h.competition, home_team: h.home_team, away_team: h.away_team, match_date: h.match_date }));
+  function downloadResults(groupKey) {
+    const data = results[groupKey];
+    if (!data) return;
+    const payload = { type: "football-predictor-results", competition: GROUPS[groupKey].competition, stage_label: data.stage_label, downloaded_at: new Date().toISOString(), results: data.results };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.download = `football-predictor-resultate-${groupKey.replace(/\s+/g, "_")}-${ts}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
-    if (pending.length === 0) return;
-
-    setResolving(true);
-    try {
-      const res = await fetch("/api/resolve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pending }),
-      });
-      const data = await res.json();
-      if (data.ok && data.updates.length > 0) {
-        setHistory(h => h.map(item => {
-          const upd = data.updates.find(u => u.id === item.id);
-          if (!upd) return item;
-          return { ...item, actual_home_score: upd.actual_home_score, actual_away_score: upd.actual_away_score, resolved: true };
-        }));
+  function uploadResults(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed.results)) throw new Error("Datei enthält keine gültigen Resultate.");
+        setLoadedResultSets(rs => [...rs, { filename: file.name, competition: parsed.competition || "Unbekannt", results: parsed.results, loaded_at: new Date().toISOString() }]);
+      } catch (err) {
+        alert("Ungültige Resultate-Datei: " + err.message);
       }
-    } catch (e) {
-      console.error(e);
-    }
-    setResolving(false);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  // Gleicht offene Prognosen gegen alle hochgeladenen Resultat-Sets ab — ohne KI-Aufruf.
+  function runLocalResolve() {
+    let matchedCount = 0;
+    setHistory(h => h.map(item => {
+      if (item.resolved) return item;
+      for (const set of loadedResultSets) {
+        const hit = set.results.find(r =>
+          r.home?.toLowerCase().trim() === item.home_team?.toLowerCase().trim() &&
+          r.away?.toLowerCase().trim() === item.away_team?.toLowerCase().trim()
+        );
+        if (hit && typeof hit.home_score === "number" && typeof hit.away_score === "number") {
+          matchedCount++;
+          return { ...item, actual_home_score: hit.home_score, actual_away_score: hit.away_score, resolved: true };
+        }
+      }
+      return item;
+    }));
+    if (matchedCount === 0) alert("Keine passenden Resultate in den geladenen Dateien gefunden.");
   }
 
   const resolvedHistory = history.filter(h => h.resolved);
@@ -352,14 +418,21 @@ export default function Home() {
           <div className={styles.leagueHeader}>
             <span className={styles.leagueTitle}>📊 KI-Trefferquote (alle Ligen)</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className={styles.analyseAllBtn} disabled={resolving} onClick={runResolve}>
-                {resolving ? "Gleiche ab…" : "🔄 Offene Spiele abgleichen"}
+              <button className={styles.analyseAllBtn} onClick={() => resultsInputRef.current?.click()}>
+                ⬆️ Resultate-Datei laden
               </button>
+              <button className={styles.analyseAllBtn} disabled={loadedResultSets.length === 0} onClick={runLocalResolve}>
+                ✅ Lokal abgleichen
+              </button>
+              <input ref={resultsInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={uploadResults} />
               <button className={styles.analyseAllBtn} onClick={downloadHistory}>
                 ⬇️ Historie herunterladen
               </button>
               <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportPdf} disabled={history.length === 0}>
-                🖨️ Als PDF exportieren
+                🖨️ Prognosen als PDF
+              </button>
+              <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportStatsPdf} disabled={history.length === 0}>
+                🖨️ Trefferquote als PDF
               </button>
               <button className={styles.analyseAllBtn} onClick={() => fileInputRef.current?.click()}>
                 ⬆️ Historie hochladen
@@ -367,6 +440,14 @@ export default function Home() {
               <input ref={fileInputRef} type="file" accept="application/json" style={{ display: "none" }} onChange={uploadHistory} />
             </div>
           </div>
+
+          {loadedResultSets.length > 0 && (
+            <div className={styles.card} style={{ fontSize: 12, color: "#6b7280" }}>
+              Geladene Resultate-Dateien: {loadedResultSets.map((s, i) => (
+                <span key={i} className={styles.snapshotBadge} style={{ marginLeft: 6 }}>📄 {s.competition} ({s.results.length} Spiele)</span>
+              ))}
+            </div>
+          )}
 
           {history.length === 0 && (
             <div className={styles.card}>
@@ -456,6 +537,11 @@ export default function Home() {
           {view === "results" && (
             <button className={styles.analyseAllBtn} disabled={isResLoading} onClick={() => loadResults(filter)}>
               {isResLoading ? "Lade…" : "🔄 Aktualisieren"}
+            </button>
+          )}
+          {view === "results" && currentResults && currentResults.results.length > 0 && (
+            <button className={styles.analyseAllBtn} style={{ background: "#374151" }} onClick={() => downloadResults(filter)}>
+              ⬇️ Resultate speichern
             </button>
           )}
         </div>
