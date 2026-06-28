@@ -132,7 +132,7 @@ export default function Home() {
   async function fetchLeagueInfoOnline(groupKey) {
     const teams = [...new Set((st.fixtures?.matches || []).flatMap(m => [m.home, m.away]))];
     if (teams.length === 0) {
-      alert("Bitte zuerst die anstehenden Spiele laden (Schritt 3), damit bekannt ist, welche Teams gebraucht werden — oder lade die Liga-Infos aus einer Datei.");
+      alert("Bitte zuerst die anstehenden Spiele laden (Schritt 2), damit bekannt ist, welche Teams gebraucht werden — oder lade die Liga-Infos aus einer Datei.");
       return;
     }
     setBusyKey(`leagueinfo-${groupKey}`, true);
@@ -472,38 +472,38 @@ export default function Home() {
             </div>
           </div>
 
-          {/* SCHRITT 2: LIGA-INFOS */}
+          {/* SCHRITT 2: ANSTEHENDE SPIELE */}
           <div className={styles.stepCard} style={{ opacity: hasResults ? 1 : 0.45 }}>
             <div className={styles.stepHeader}>
               <span className={styles.stepBadge}>2</span>
-              <span className={styles.stepTitle}>Liga-Infos {hasLeagueInfo && <span className={styles.stepDone}>✓ Stand {st.leagueInfo.fetched_at}</span>}</span>
-            </div>
-            <div className={styles.stepActions}>
-              <button className={styles.analyseAllBtn} disabled={!hasResults || busy[`leagueinfo-${filter}`]} onClick={() => fetchLeagueInfoOnline(filter)}>
-                {busy[`leagueinfo-${filter}`] ? "⏳ Lade…" : "🌐 Liga-Infos herunterladen"}
-              </button>
-              <button className={styles.analyseAllBtn} style={{ background: "#374151" }} disabled={!hasResults} onClick={() => leagueInfoFileRef.current?.click()}>⬆️ Aus Datei laden</button>
-              <input ref={leagueInfoFileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => uploadLeagueInfoFile(e, filter)} />
-              {hasLeagueInfo && (
-                <button className={styles.analyseAllBtn} style={{ background: "#374151" }} onClick={() => downloadLeagueInfo(filter)}>⬇️ Liga-Infos speichern</button>
-              )}
-            </div>
-          </div>
-
-          {/* SCHRITT 3: ANSTEHENDE SPIELE */}
-          <div className={styles.stepCard} style={{ opacity: hasLeagueInfo ? 1 : 0.45 }}>
-            <div className={styles.stepHeader}>
-              <span className={styles.stepBadge}>3</span>
               <span className={styles.stepTitle}>Anstehende Spiele {hasFixtures && <span className={styles.stepDone}>✓ {st.fixtures.round_label || "geladen"}</span>}</span>
             </div>
             <div className={styles.stepActions}>
-              <button className={styles.analyseAllBtn} disabled={!hasLeagueInfo || busy[`fixtures-${filter}`]} onClick={() => fetchFixtures(filter)}>
+              <button className={styles.analyseAllBtn} disabled={!hasResults || busy[`fixtures-${filter}`]} onClick={() => fetchFixtures(filter)}>
                 {busy[`fixtures-${filter}`] ? "⏳ Lade…" : "📅 Anstehende Spiele laden"}
               </button>
             </div>
             {st.fixtures?.note && st.fixtures.matches.length === 0 && (
               <div style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>{st.fixtures.note}</div>
             )}
+          </div>
+
+          {/* SCHRITT 3: LIGA-INFOS */}
+          <div className={styles.stepCard} style={{ opacity: hasFixtures ? 1 : 0.45 }}>
+            <div className={styles.stepHeader}>
+              <span className={styles.stepBadge}>3</span>
+              <span className={styles.stepTitle}>Liga-Infos {hasLeagueInfo && <span className={styles.stepDone}>✓ Stand {st.leagueInfo.fetched_at}</span>}</span>
+            </div>
+            <div className={styles.stepActions}>
+              <button className={styles.analyseAllBtn} disabled={!hasFixtures || busy[`leagueinfo-${filter}`]} onClick={() => fetchLeagueInfoOnline(filter)}>
+                {busy[`leagueinfo-${filter}`] ? "⏳ Lade…" : "🌐 Liga-Infos herunterladen"}
+              </button>
+              <button className={styles.analyseAllBtn} style={{ background: "#374151" }} disabled={!hasFixtures} onClick={() => leagueInfoFileRef.current?.click()}>⬆️ Aus Datei laden</button>
+              <input ref={leagueInfoFileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => uploadLeagueInfoFile(e, filter)} />
+              {hasLeagueInfo && (
+                <button className={styles.analyseAllBtn} style={{ background: "#374151" }} onClick={() => downloadLeagueInfo(filter)}>⬇️ Liga-Infos speichern</button>
+              )}
+            </div>
           </div>
 
           {/* SCHRITT 4: ANALYSE */}
