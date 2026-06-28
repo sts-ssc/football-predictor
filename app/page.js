@@ -109,8 +109,12 @@ export default function Home() {
     setTimeout(() => setBulkProgress(null), 800); // kurz "fertig" anzeigen, dann ausblenden
   }
 
-  function exportPdf() {
-    const rows = [...history].reverse().map(r => `
+  function exportPdf(filterCompetition) {
+    const filtered = filterCompetition
+      ? history.filter(r => r.competition === filterCompetition)
+      : history;
+
+    const rows = [...filtered].reverse().map(r => `
       <tr>
         <td>${new Date(r.created_at).toLocaleString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
         <td>${r.competition}</td>
@@ -146,7 +150,7 @@ export default function Home() {
       </head>
       <body>
         <h1>⚽ Football Score Predictor – Prognosen-Übersicht</h1>
-        <div class="meta">Erstellt am ${generatedAt} · ${history.length} Prognosen total</div>
+        <div class="meta">Erstellt am ${generatedAt}${filterCompetition ? ` · ${filterCompetition}` : ""} · ${filtered.length} Prognosen</div>
         <table>
           <thead>
             <tr>
@@ -428,9 +432,6 @@ export default function Home() {
               <button className={styles.analyseAllBtn} onClick={downloadHistory}>
                 ⬇️ Historie herunterladen
               </button>
-              <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportPdf} disabled={history.length === 0}>
-                🖨️ Prognosen als PDF
-              </button>
               <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportStatsPdf} disabled={history.length === 0}>
                 🖨️ Trefferquote als PDF
               </button>
@@ -590,14 +591,24 @@ export default function Home() {
               </div>
             )}
 
-            <button
-              className={styles.analyseAllBtn}
-              style={{ alignSelf: "flex-start" }}
-              disabled={current.matches.some(m => loading[m.id])}
-              onClick={() => current.matches.forEach(m => predict(m, filter))}
-            >
-              ⚡ Alle Spiele dieser Runde analysieren
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                className={styles.analyseAllBtn}
+                style={{ alignSelf: "flex-start" }}
+                disabled={current.matches.some(m => loading[m.id])}
+                onClick={() => current.matches.forEach(m => predict(m, filter))}
+              >
+                ⚡ Alle Spiele dieser Runde analysieren
+              </button>
+              <button
+                className={styles.analyseAllBtn}
+                style={{ background: "#b91c1c" }}
+                onClick={() => exportPdf(lg2.competition)}
+                disabled={!current.matches.some(m => predictions[m.id])}
+              >
+                🖨️ Prognosen dieser Runde als PDF
+              </button>
+            </div>
 
             {current.matches.map(match => {
               const pred = predictions[match.id];
