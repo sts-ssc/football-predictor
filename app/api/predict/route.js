@@ -2,51 +2,39 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Berechnet die Form eines Teams aus den letzten N gespeicherten Ergebnissen.
-function computeFormFromResults(team, results) {
-  const relevant = results
-    .filter(r => r.home === team || r.away === team)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 5);
+function formatTeamData(name, data) {
+  if (!data) return `${name}: Keine Daten verfügbar — bitte zuerst per "Daten holen" laden.`;
 
-  if (relevant.length === 0) return null;
+  const matchLines = (data.matches_played || []).length > 0
+    ? data.matches_played.map(m => `  - ${m.date}: ${name} ${m.home_away === "Heim" ? "vs" : "@"} ${m.opponent} → ${m.score}`).join("\n")
+    : "  (keine Spiele in dieser Saison/diesem Turnier gefunden)";
 
-  const formLetters = relevant.map(r => {
-    const isHome = r.home === team;
-    const own = isHome ? r.home_score : r.away_score;
-    const opp = isHome ? r.away_score : r.home_score;
-    if (own > opp) return "W";
-    if (own < opp) return "L";
-    return "D";
-  });
-
-  return formLetters.join("-");
+  return `${name}:
+Tabelle/Stand: ${data.table_position}
+Bisherige Spiele in dieser Saison/diesem Turnier:
+${matchLines}
+Aktuelle Ausfälle: ${data.injuries}
+Hinweis: ${data.notes || "–"}
+(Daten erfasst am ${data.fetched_at})`;
 }
 
 export async function POST(request) {
-  const { home, away, league, date, homeData, awayData, homeResults, awayResults } = await request.json();
+  const { home, away, league, date, homeData, awayData } = await request.json();
 
-  const homeForm = homeResults ? computeFormFromResults(home, homeResults) : null;
-  const awayForm = awayResults ? computeFormFromResults(away, awayResults) : null;
-
-  const homeContext = `${home}: ` + [
-    homeData ? `Tabelle: ${homeData.table_position}, Liga-Info-Form: ${homeData.recent_form}, Ausfälle: ${homeData.injuries}, Hinweis: ${homeData.notes || "–"}` : "Keine Liga-Infos geladen",
-    homeForm ? `Berechnete Form aus gespeicherten Resultaten (letzte ${Math.min(5, (homeResults || []).length)} Spiele): ${homeForm}` : "Keine gespeicherten Resultate vorhanden",
-  ].join(" | ");
-
-  const awayContext = `${away}: ` + [
-    awayData ? `Tabelle: ${awayData.table_position}, Liga-Info-Form: ${awayData.recent_form}, Ausfälle: ${awayData.injuries}, Hinweis: ${awayData.notes || "–"}` : "Keine Liga-Infos geladen",
-    awayForm ? `Berechnete Form aus gespeicherten Resultaten (letzte ${Math.min(5, (awayResults || []).length)} Spiele): ${awayForm}` : "Keine gespeicherten Resultate vorhanden",
-  ].join(" | ");
+  const homeContext = formatTeamData(home, homeData);
+  const awayContext = formatTeamData(away, awayData);
 
   const prompt = `You are a football analyst. Predict the score for: ${home} vs ${away} (${league}, ${date}).
 
-Use ONLY the following pre-gathered data — do NOT search the web, base your analysis entirely on this. Combine both the league info (injuries, table) and the form computed from stored match results — they are complementary, not redundant:
+Base your analysis ONLY on the following pre-gathered data — do NOT search the web, do NOT invent additional matches or stats:
 
 ${homeContext}
+
 ${awayContext}
 
-If data is missing for a team, state that explicitly in your reasoning and rely on general football knowledge instead, noting the prediction is less reliable.
+Analyze the actual match results listed above (not just a vague "form" label) to assess each team's current strength, scoring tendency, and defensive solidity. Factor in injuries/suspensions explicitly.
+
+If a team has no matches listed (e.g. season/tournament hasn't started or no data was found), state this explicitly in your reasoning and rely on general football knowledge instead, noting the prediction is less reliable.
 
 Respond ONLY with raw JSON, no markdown, no backticks:
 {
