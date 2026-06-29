@@ -264,12 +264,14 @@ export default function Home() {
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target.result);
-        if (!Array.isArray(parsed.results)) throw new Error("Datei enthält keine gültigen Resultate.");
+        if (!Array.isArray(parsed.results)) throw new Error("Datei enthält kein 'results'-Array.");
         setLoadedResultSets(rs => [...rs, { filename: file.name, competition: parsed.competition || "Unbekannt", results: parsed.results, loaded_at: new Date().toISOString() }]);
+        alert(`✅ Resultate-Datei geladen: ${parsed.competition || "Unbekannt"} mit ${parsed.results.length} Spielen.`);
       } catch (err) {
-        alert("Ungültige Resultate-Datei: " + err.message);
+        alert("❌ Fehler beim Laden der Resultate-Datei: " + err.message);
       }
     };
+    reader.onerror = () => alert("❌ Datei konnte nicht gelesen werden.");
     reader.readAsText(file);
     e.target.value = "";
   }
@@ -429,7 +431,7 @@ export default function Home() {
               <button className={styles.analyseAllBtn} onClick={downloadHistory}>
                 ⬇️ Historie herunterladen
               </button>
-              <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportPdf} disabled={history.length === 0}>
+              <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={() => exportPdf()} disabled={history.length === 0}>
                 🖨️ Prognosen als PDF
               </button>
               <button className={styles.analyseAllBtn} style={{ background: "#b91c1c" }} onClick={exportStatsPdf} disabled={history.length === 0}>
@@ -442,11 +444,18 @@ export default function Home() {
             </div>
           </div>
 
-          {loadedResultSets.length > 0 && (
-            <div className={styles.card} style={{ fontSize: 12, color: "#6b7280" }}>
-              Geladene Resultate-Dateien: {loadedResultSets.map((s, i) => (
-                <span key={i} className={styles.snapshotBadge} style={{ marginLeft: 6 }}>📄 {s.competition} ({s.results.length} Spiele)</span>
-              ))}
+          {loadedResultSets.length > 0 ? (
+            <div className={styles.card}>
+              <strong style={{ fontSize: 13 }}>Geladene Resultate-Dateien ({loadedResultSets.length}):</strong>
+              <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {loadedResultSets.map((s, i) => (
+                  <span key={i} className={styles.snapshotBadge}>📄 {s.competition} ({s.results.length} Spiele)</span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.card} style={{ color: "#9ca3af", fontSize: 13 }}>
+              Noch keine Resultate-Dateien geladen. Lade zuerst über «⬆️ Resultate-Datei laden» eine Datei hoch (zuvor im «Ergebnisse»-Tab einer Liga mit «⬇️ Resultate speichern» erzeugt).
             </div>
           )}
 
