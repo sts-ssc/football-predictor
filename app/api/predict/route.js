@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function formatTeamData(name, data) {
-  if (!data) return `${name}: Keine Daten verfügbar — bitte zuerst per "Daten holen" laden.`;
+  if (!data) return `${name}: KEINE DATEN VERFÜGBAR.`;
 
   const matchLines = (data.matches_played || []).length > 0
     ? data.matches_played.map(m => `  - ${m.date}: ${name} ${m.home_away === "Heim" ? "vs" : "@"} ${m.opponent} → ${m.score}`).join("\n")
@@ -24,6 +24,9 @@ export async function POST(request) {
   const homeContext = formatTeamData(home, homeData);
   const awayContext = formatTeamData(away, awayData);
 
+  const missingWarning = (!homeData ? `\n\nWICHTIG: Für ${home} liegen KEINE Daten vor — das musst du in deiner reasoning explizit erwähnen.` : "")
+    + (!awayData ? `\n\nWICHTIG: Für ${away} liegen KEINE Daten vor — das musst du in deiner reasoning explizit erwähnen.` : "");
+
   const prompt = `You are a football analyst. Predict the score for: ${home} vs ${away} (${league}, ${date}).
 
 Base your analysis ONLY on the following pre-gathered data — do NOT search the web, do NOT invent additional matches or stats:
@@ -31,10 +34,11 @@ Base your analysis ONLY on the following pre-gathered data — do NOT search the
 ${homeContext}
 
 ${awayContext}
+${missingWarning}
 
 Analyze the actual match results listed above (not just a vague "form" label) to assess each team's current strength, scoring tendency, and defensive solidity. Factor in injuries/suspensions explicitly.
 
-If a team has no matches listed (e.g. season/tournament hasn't started or no data was found), state this explicitly in your reasoning and rely on general football knowledge instead, noting the prediction is less reliable.
+CRITICAL: If a team has data with actual matches listed, you MUST reference those specific results (scores, opponents) in your reasoning — do NOT claim "no data available" if match results were provided above. Only say data is missing if the context above literally says "KEINE DATEN VERFÜGBAR" or lists zero matches.
 
 Respond ONLY with raw JSON, no markdown, no backticks:
 {
