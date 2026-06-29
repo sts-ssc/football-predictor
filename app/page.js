@@ -622,17 +622,28 @@ export default function Home() {
                       </div>
 
                       <div className={styles.teamDataRow}>
-                        <span className={`${styles.teamDataChip} ${homeTd ? styles.teamDataChipOk : ""}`}
+                        <span className={`${styles.teamDataChip} ${homeTd && !homeTd._incomplete ? styles.teamDataChipOk : homeTd?._incomplete ? styles.teamDataChipWarn : ""}`}
                           onClick={() => fetchTeamData(match.home, lg2.competition)}
-                          title={homeTd ? `Tabelle: ${homeTd.table_position} · Form: ${homeTd.recent_form} · Ausfälle: ${homeTd.injuries} · Stand: ${homeTd.fetched_at || "-"}` : "Klicken, um Daten zu holen"}>
-                          {homeTdLoading ? "⏳" : homeTd ? "✅" : "📥"} {match.home}{homeTd?.fetched_at ? ` (${homeTd.fetched_at})` : ""}
+                          title={homeTd ? `Tabelle: ${homeTd.table_position}\nSpiele: ${(homeTd.matches_played || []).map(m => `${m.opponent} ${m.score}`).join(", ") || "keine"}\nAusfälle: ${homeTd.injuries}\nStand: ${homeTd.fetched_at || "-"}` : "Klicken, um Daten zu holen"}>
+                          {homeTdLoading ? "⏳" : homeTd?._incomplete ? "⚠️" : homeTd ? "✅" : "📥"} {match.home}{homeTd?.fetched_at ? ` (${homeTd.fetched_at})` : ""}
                         </span>
-                        <span className={`${styles.teamDataChip} ${awayTd ? styles.teamDataChipOk : ""}`}
+                        <span className={`${styles.teamDataChip} ${awayTd && !awayTd._incomplete ? styles.teamDataChipOk : awayTd?._incomplete ? styles.teamDataChipWarn : ""}`}
                           onClick={() => fetchTeamData(match.away, lg2.competition)}
-                          title={awayTd ? `Tabelle: ${awayTd.table_position} · Form: ${awayTd.recent_form} · Ausfälle: ${awayTd.injuries} · Stand: ${awayTd.fetched_at || "-"}` : "Klicken, um Daten zu holen"}>
-                          {awayTdLoading ? "⏳" : awayTd ? "✅" : "📥"} {match.away}{awayTd?.fetched_at ? ` (${awayTd.fetched_at})` : ""}
+                          title={awayTd ? `Tabelle: ${awayTd.table_position}\nSpiele: ${(awayTd.matches_played || []).map(m => `${m.opponent} ${m.score}`).join(", ") || "keine"}\nAusfälle: ${awayTd.injuries}\nStand: ${awayTd.fetched_at || "-"}` : "Klicken, um Daten zu holen"}>
+                          {awayTdLoading ? "⏳" : awayTd?._incomplete ? "⚠️" : awayTd ? "✅" : "📥"} {match.away}{awayTd?.fetched_at ? ` (${awayTd.fetched_at})` : ""}
                         </span>
                       </div>
+
+                      {(homeTd?.matches_played?.length > 0 || awayTd?.matches_played?.length > 0) && (
+                        <div className={styles.matchHistory}>
+                          {homeTd?.matches_played?.length > 0 && (
+                            <div><strong>{match.home}:</strong> {homeTd.matches_played.map(m => `${m.opponent} ${m.score}`).join(" · ")}</div>
+                          )}
+                          {awayTd?.matches_played?.length > 0 && (
+                            <div><strong>{match.away}:</strong> {awayTd.matches_played.map(m => `${m.opponent} ${m.score}`).join(" · ")}</div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.right}>
