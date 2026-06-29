@@ -350,6 +350,15 @@ export default function Home() {
   }, [filter, view]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function predict(match, groupKey) {
+    const homeDataCheck = teamData[match.home];
+    const awayDataCheck = teamData[match.away];
+    if (homeDataCheck?._incomplete || awayDataCheck?._incomplete || !homeDataCheck || !awayDataCheck) {
+      const proceed = confirm(
+        `⚠️ Achtung: Für ${!homeDataCheck || homeDataCheck?._incomplete ? match.home : match.away} liegen keine ausreichenden Daten vor.\n\nDie Prognose wird dann nur auf allgemeinem Fussballwissen basieren und ist weniger zuverlässig.\n\nTrotzdem fortfahren?`
+      );
+      if (!proceed) return;
+    }
+
     setLoading(l => ({ ...l, [match.id]: true }));
     try {
       const competition = GROUPS[groupKey].competition;
