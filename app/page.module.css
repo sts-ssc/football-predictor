@@ -1,44 +1,68 @@
-.main        { max-width: 740px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif; }
+.main        { max-width: 760px; margin: 0 auto; padding: 2rem 1rem; font-family: system-ui, sans-serif; }
 .title       { font-size: 1.7rem; font-weight: 600; margin-bottom: 4px; }
-.subtitle    { color: #6b7280; font-size: 0.95rem; margin-bottom: 1.5rem; }
+.subtitle    { color: #6b7280; font-size: 0.9rem; margin-bottom: 1.5rem; }
 
-.filters     { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; }
+/* ── Liga-Tabs ── */
+.filters     { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
 .filterBtn   { padding: 5px 14px; border-radius: 20px; font-size: 12px; cursor: pointer;
                background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
 .filterBtn:hover { background: #e5e7eb; }
 .active      { background: #111827 !important; color: #fff !important; border-color: #111827 !important; }
 
-.leagueHeader  { display: flex; align-items: center; justify-content: space-between;
-                 margin: 1.25rem 0 8px; flex-wrap: wrap; gap: 8px; }
-.leagueTitle   { font-size: 15px; font-weight: 600; color: #111827; }
-.analyseAllBtn { padding: 6px 16px; border-radius: 8px; background: #059669; color: #fff;
-                 border: none; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
-.analyseAllBtn:hover:not(:disabled) { background: #047857; }
-.analyseAllBtn:disabled { background: #9ca3af; cursor: not-allowed; }
+/* ── Button-Reihen ── */
+.btnRow      { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 
-.list        { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.btnStep     { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+               background: #374151; color: #fff; border: none; cursor: pointer; white-space: nowrap; }
+.btnStep:hover:not(:disabled) { background: #1f2937; }
+.btnStep:disabled { background: #9ca3af; cursor: not-allowed; }
 
+.btnAction   { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
+               background: #059669; color: #fff; border: none; cursor: pointer; white-space: nowrap; }
+.btnAction:hover:not(:disabled) { background: #047857; }
+.btnAction:disabled { background: #9ca3af; cursor: not-allowed; }
+
+.btnActionRed { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
+               background: #b91c1c; color: #fff; border: none; cursor: pointer; white-space: nowrap; }
+.btnActionRed:hover:not(:disabled) { background: #991b1b; }
+.btnActionRed:disabled { background: #9ca3af; cursor: not-allowed; }
+
+/* ── Fortschrittsbalken ── */
+.progressBarOuter { width: 100%; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin: 4px 0; }
+.progressBarInner { height: 100%; background: #374151; border-radius: 10px; transition: width 0.3s ease; }
+
+/* ── Liste & Karten ── */
+.list        { display: flex; flex-direction: column; gap: 12px; }
 .card        { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
                padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-
 .cardTop     { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .matchInfo   { flex: 1; min-width: 180px; }
 
-.leagueBadge { display: inline-block; font-size: 11px; font-weight: 500;
-               padding: 2px 9px; border-radius: 20px; border: 1px solid; margin-bottom: 6px; }
+.leagueHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.leagueTitle  { font-size: 15px; font-weight: 600; color: #111827; }
+.leagueBadge  { display: inline-block; font-size: 11px; font-weight: 500;
+                padding: 2px 9px; border-radius: 20px; border: 1px solid; margin-bottom: 6px; }
 
 .teams       { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
 .vs          { font-size: 12px; color: #9ca3af; font-weight: 400; }
 .date        { font-size: 12px; color: #9ca3af; margin-top: 4px; }
 
-.right       { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* ── Team-Chips ── */
+.teamDataRow    { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.teamDataChip   { font-size: 11px; padding: 3px 9px; border-radius: 20px; cursor: default;
+                  background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; white-space: nowrap; }
+.teamDataChipOk   { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.teamDataChipWarn { background: #fef3c7; color: #92400e; border-color: #fde68a; }
 
-.scoreBox    { display: flex; align-items: center; gap: 6px;
-               background: #f9fafb; border-radius: 8px; padding: 6px 14px; }
+/* ── Match-History ── */
+.matchHistory  { margin-top: 6px; font-size: 11px; color: #6b7280; line-height: 1.6; }
+
+/* ── Score & Prognose ── */
+.right       { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.scoreBox    { display: flex; align-items: center; gap: 6px; background: #f9fafb; border-radius: 8px; padding: 6px 14px; }
 .scoreNum    { font-size: 22px; font-weight: 700; color: #111827; }
 .scoreSep    { font-size: 14px; color: #9ca3af; }
-.confBadge   { font-size: 11px; padding: 3px 9px; border-radius: 20px;
-               border: 1px solid; font-weight: 500; margin-left: 4px; }
+.confBadge   { font-size: 11px; padding: 3px 9px; border-radius: 20px; border: 1px solid; font-weight: 500; margin-left: 4px; }
 
 .predictBtn  { padding: 8px 18px; border-radius: 8px; background: #1d4ed8; color: #fff;
                border: none; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
@@ -48,19 +72,6 @@
 .reasoning   { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f3f4f6;
                font-size: 13px; color: #4b5563; line-height: 1.65; }
 
-.sources     { margin-top: 8px; font-size: 11px; color: #9ca3af; font-style: italic; }
-
-.teamDataRow   { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.teamDataChip  { font-size: 11px; padding: 3px 9px; border-radius: 20px; cursor: pointer;
-                 background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; white-space: nowrap; }
-.teamDataChip:hover { background: #e5e7eb; }
-.teamDataChipOk { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
-.teamDataChipWarn { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-
-.matchHistory  { margin-top: 6px; font-size: 11px; color: #6b7280; line-height: 1.5; }
-
-.rawDataBar    { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.snapshotBadge { font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 10px; border-radius: 8px; }
-
-.progressBarOuter { width: 100%; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; }
-.progressBarInner { height: 100%; background: #7c3aed; border-radius: 10px; transition: width 0.3s ease; }
+/* ── Snapshot-Badge ── */
+.snapshotBadge { font-size: 12px; color: #6b7280; background: #f3f4f6;
+                 padding: 4px 10px; border-radius: 8px; display: inline-block; }
