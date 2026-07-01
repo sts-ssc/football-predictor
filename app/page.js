@@ -115,7 +115,26 @@ export default function Home() {
   // ══════════════════════════════════════════════════════════════════════
   // SCHRITT 3: Daten speichern
   // ══════════════════════════════════════════════════════════════════════
-  function saveData() {
+  async function loadSingleTeam(team) {
+    const newData = { ...teamData };
+    try {
+      const res = await fetch("/api/teamdata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team, competition: lg.competition }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error);
+      const hasMatches = Array.isArray(d.data.matches_played) && d.data.matches_played.length > 0;
+      const tablePos = (d.data.table_position || "").toLowerCase();
+      const hasTable = tablePos && !tablePos.includes("keine") && !tablePos.includes("nicht gefunden") && !tablePos.includes("n/a");
+      newData[team] = { ...d.data, _incomplete: !hasMatches && !hasTable };
+      setTeamData(newData);
+      if (newData[team]._incomplete) alert(`⚠️ Für ${team} konnten keine ausreichenden Daten gefunden werden.`);
+    } catch (e) {
+      alert(`❌ Fehler beim Laden von ${team}: ` + e.message);
+    }
+  }
     if (!fixtures) { alert("Keine Daten zum Speichern vorhanden."); return; }
     const payload = {
       type: "football-predictor-snapshot",
@@ -182,6 +201,8 @@ export default function Home() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setPredictions(p => ({ ...p, [match.id]: data.prediction }));
+      const sources = [...new Set([...(homeData?.sources || []), ...(awayData?.sources || [])])];
+      setPredictions(p => ({ ...p, [match.id]: { ...data.prediction, sources } }));
       setHistory(h => [...h, {
         id: `${match.id}-${Date.now()}`,
         competition: lg.competition,
@@ -447,13 +468,21 @@ ${rows.map(r => `<tr>
 
                     {/* Team-Status-Chips */}
                     <div className={styles.teamDataRow}>
-                      {[{ team: match.home, td: homeTd }, { team: match.away, td: awayTd }].map(({ team, td }) => (
-                        <span key={team}
-                          className={`${styles.teamDataChip} ${td && !td._incomplete ? styles.teamDataChipOk : td?._incomplete ? styles.teamDataChipWarn : ""}`}
-                          title={td ? `Tabelle: ${td.table_position}\nSpiele: ${(td.matches_played || []).map(m => `${m.opponent} ${m.score}`).join(", ") || "keine"}\nAusfälle: ${td.injuries}` : "Keine Daten – bitte Schritt 2 ausführen"}>
-                          {!td ? "❔" : td._incomplete ? "⚠️" : "✅"} {team}{td?.fetched_at ? ` (${td.fetched_at})` : ""}
-                        </span>
-                      ))}
+                      {[{ team: match.home, td: homeTd }, { team: match.away, td: awayTd }].map(({ team, td }) => {
+                        const needsLoad = !td || td._incomplete;
+                        return (
+                          <span key={team}
+                            className={`${styles.teamDataChip} ${td && !td._incomplete ? styles.teamDataChipOk : td?._incomplete ? styles.teamDataChipWarn : styles.teamDataChipMissing}`}
+                            style={{ cursor: needsLoad ? "pointer" : "default" }}
+                            onClick={() => needsLoad && loadSingleTeam(team)}
+                            title={td && !td._incomplete
+                              ? `Tabelle: ${td.table_position}\nSpiele: ${(td.matches_played || []).map(m => `${m.opponent} ${m.score}`).join(", ")}\nAusfälle: ${td.injuries}`
+                              : `Klicken um Daten für ${team} nachzuladen`}>
+                            {!td ? "❔ " : td._incomplete ? "⚠️ " : "✅ "}{team}{td?.fetched_at ? ` (${td.fetched_at})` : ""}
+                            {needsLoad && <span style={{ marginLeft: 4, fontSize: 10 }}>↻ nachladen</span>}
+                          </span>
+                        );
+                      })}
                     </div>
 
                     {/* Match-History */}
@@ -487,7 +516,14 @@ ${rows.map(r => `<tr>
                 </div>
 
                 {pred?.reasoning && (
-                  <div className={styles.reasoning}>{pred.reasoning}</div>
+                  <div className={styles.reasoning}>
+                    {pred.reasoning}
+                    {pred.sources && pred.sources.length > 0 && (
+                      <div className={styles.sources}>
+                        Quellen: {pred.sources.join(" · ")}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             );
